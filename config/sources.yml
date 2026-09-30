@@ -1,0 +1,70 @@
+media:
+  vogue:
+    url: https://www.vogue.fr/mode
+
+    locale: fr_FR
+  vogue_tendances:
+    url: https://www.vogue.fr/mode/tendances
+
+    locale: fr_FR
+  vogue_shopping:
+    url: https://www.vogue.fr/mode/shopping
+
+    locale: fr_FR
+  elle:
+    url: https://www.stylist.fr/mode
+
+    locale: fr_FR
+  aufeminin:
+    url: https://www.aufeminin.com/mode/
+    rss_url: https://www.aufeminin.com/feed/
+
+    locale: fr_FR
+  madame_figaro:
+    url: https://madame.lefigaro.fr/style
+
+    locale: fr_FR
+  grazia:
+    url: https://www.grazia.fr/mode
+    rss_url: https://www.grazia.fr/rss.xml
+    locale: fr_FR
+  marie_claire:
+    url: https://www.marieclaire.fr/mode,20012.asp2
+
+    locale: fr_FR
+  glamour:
+    url: https://www.nouvelobs.com/mode/
+    rss_url: https://www.nouvelobs.com/mode/rss.xml
+
+    locale: fr_FR
+  lofficiel:
+    url: https://www.lofficiel.com/categories/fashion
+    rss_url: https://www.lofficiel.com/feed.rss
+
+    locale: fr_FR
+  goodonyou:
+    url: https://goodonyou.eco/fashion
+    rss_url: https://goodonyou.eco/feed/
+    locale: en_GB
+streetwear_media:
+  hypebeast:
+    rss_url: https://hypebeast.com/feed
+  highsnobiety:
+    rss_url: https://www.highsnobiety.com/feed/
+reddit:
+  subreddits:
+    - fashion
+    - streetwear
+    - sneakers
+    - femalefashionadvice
+    - malefashionadvice
+    - frugalmalefashion
+    - femalefashion
+    - womensfashion
+ebay:
+  marketplace_id: EBAY_FR
+  environment: production
+google_trends:
+  geo: FR
+  timeframe: today 5-y
+

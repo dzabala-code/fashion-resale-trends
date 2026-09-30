@@ -1,0 +1,173 @@
+x-airflow-common: &airflow-common
+  build: .
+  image: fashion-resale-trends-airflow:latest
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/project/dags
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/project/logs
+    AIRFLOW__WEBSERVER__SECRET_KEY: "fashion-resale-trends-secret"
+    _AIRFLOW_WWW_USER_CREATE: "true"
+    _AIRFLOW_WWW_USER_USERNAME: "admin"
+    _AIRFLOW_WWW_USER_PASSWORD: "admin"
+    PYTHONPATH: /opt/airflow/project/src
+    LOCAL_DATA_DIR: /opt/airflow/project/data_lake
+    STORAGE_BACKEND: s3
+    MINIO_ENDPOINT_URL: http://minio:9000
+    SPARK_MASTER: local[2]
+  volumes:
+    - ./dags:/opt/airflow/project/dags
+    - ./src:/opt/airflow/project/src
+    - ./config:/opt/airflow/project/config
+    - ./kibana:/opt/airflow/project/kibana
+    - ./data_lake:/opt/airflow/project/data_lake
+    - ./exports:/opt/airflow/project/exports
+    - ./logs:/opt/airflow/project/logs
+    - ./scripts:/opt/airflow/project/scripts
+  depends_on:
+    postgres:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+    create-bucket:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  create-bucket:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb -p local/fashion-trends &&
+      mc anonymous set none local/fashion-trends
+      "
+
+  airflow-init:
+    <<: *airflow-common
+    command: airflow db upgrade
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: airflow webserver
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: airflow scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug
+    command: bash
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9201:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -v '\"status\":\"red\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5602:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Spark cluster (bonus +1.5 pts)
+  # -------------------------------------------------------------------------
+  spark-master:
+    image: apache/spark:3.5.0
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+    ports:
+      - "7077:7077"
+      - "8090:8080"
+    volumes:
+      - ./data_lake:/opt/airflow/project/data_lake
+      - ./src:/opt/airflow/project/src
+
+  spark-worker:
+    image: apache/spark:3.5.0
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_WORKER_CORES: "2"
+    depends_on:
+      - spark-master
+    volumes:
+      - ./data_lake:/opt/airflow/project/data_lake
+      - ./src:/opt/airflow/project/src
+
+volumes:
+  postgres-data:
+  minio-data:
+  elasticsearch-data:

@@ -1,0 +1,228 @@
+# Vocabulaire de la mode française / européenne
+# Utilisé pour filtrer les keywords et ne garder que les tendances vestimentaires
+# Le pipeline découvre les tendances librement — ce fichier sert de filtre "est-ce de la mode ?"
+fashion_vocabulary:
+
+  # --- Vêtements hauts ---
+  - chemise
+  - blouse
+  - top
+  - débardeur
+  - pull
+  - pullover
+  - sweat
+  - hoodie
+  - gilet
+  - cardigan
+  - polo
+  - tunique
+  - body
+  - bustier
+  - crop
+
+  # --- Vêtements bas ---
+  - jean
+  - jeans
+  - pantalon
+  - legging
+  - short
+  - bermuda
+  - jupe
+  - cargo
+  - baggy
+  - culotte
+
+  # --- Robes / combinaisons ---
+  - robe
+  - combinaison
+  - salopette
+  - jumpsuit
+
+  # --- Vêtements extérieurs ---
+  - manteau
+  - trench
+  - parka
+  - doudoune
+  - anorak
+  - blouson
+  - perfecto
+  - blazer
+  - tailleur
+  - veste
+  - imperméable
+  - bomber
+  - teddy
+
+  # --- Chaussures ---
+  - sneakers
+  - baskets
+  - mocassins
+  - loafers
+  - ballerines
+  - escarpins
+  - boots
+  - bottines
+  - sandales
+  - mules
+  - sabots
+  - clogs
+  - derbies
+  - oxford
+  - samba
+  - gazelle
+  - forum
+  - plateformes
+  - stilettos
+  - claquettes
+  - slides
+  - tennis
+
+  # --- Accessoires ---
+  - pochette
+  - tote
+  - ceinture
+  - écharpe
+  - foulard
+  - chapeau
+  - bonnet
+  - casquette
+  - bijoux
+  - collier
+  - boucles
+  - lunettes
+  - montre
+  - manchette
+  - headband
+  - bob
+
+  # --- Matières mode ---
+  - cachemire
+  - tweed
+  - satin
+  - velours
+  - dentelle
+  - broderie
+  - sequins
+  - crochet
+  - organza
+  - soie
+  - lurex
+  - jacquard
+  - mohair
+  - denim
+  - cuir
+
+  # --- Aesthetics / mouvements mode actuels ---
+  - gorpcore
+  - coquette
+  - barbiecore
+  - normcore
+  - techwear
+  - athleisure
+  - streetwear
+  - preppy
+  - grunge
+  - boho
+  - workwear
+  - cottagecore
+
+  # --- Imprimés / motifs ---
+  - leopard
+  - floral
+  - rayures
+  - carreaux
+  - vichy
+  - damier
+
+  # --- Coupes / silhouettes ---
+  - oversized
+  - boyfriend
+  - cropped
+  - midi
+  - maxi
+  - mini
+  - slim
+  - plissé
+  - plissée
+  - évasé
+  - structuré
+  - wide
+
+  # --- Expressions multi-mots : aesthetics courants ---
+  - quiet luxury
+  - old money
+  - ballet core
+  - dark academia
+  - cottage core
+  - mob wife
+  - clean girl
+  - coastal grandmother
+  - dopamine dressing
+  - capsule wardrobe
+
+  # --- Expressions multi-mots : vêtements / accessoires ---
+  - trench coat
+  - ballet flats
+  - sac baguette
+  - jean brut
+  - veste en cuir
+  - jupe satin
+  - samba adidas
+  - leopard print
+  - mary jane
+  - kitten heels
+  - mesh flats
+  - new balance
+  - slip dress
+  - wide leg
+  - cargo pants
+  - maxi skirt
+  - mini skirt
+  - platform shoes
+  - animal print
+  - denim jacket
+  - denim on denim
+  - crop top
+  - tote bag
+  - oversized blazer
+  - crochet top
+  - robe satin
+  - jupe plissée
+  - maxi jupe
+  - mini jupe
+  - robe portefeuille
+  - chemise oversize
+  - pull cachemire
+  - manteau camel
+  - veste teddy
+  - pantalon large
+  - pantalon droit
+  - mob wife aesthetic
+  - Y2K revival
+
+  # --- Marques mode (signal fort de tendance) ---
+  - zara
+  - mango
+  - sandro
+  - maje
+  - sézane
+  - jacquemus
+  - arket
+  - uniqlo
+  - cos
+  - weekday
+  - levis
+  - adidas
+  - nike
+  - veja
+  - repetto
+  - birkenstock
+  - gucci
+  - fendi
+  - burberry
+  - chanel
+  - prada
+  - celine
+  - toteme
+  - acne
+  - isabel marant

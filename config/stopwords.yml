@@ -1,0 +1,143 @@
+stopwords:
+  # Articles et prépositions
+  - a
+  - an
+  - and
+  - are
+  - aux
+  - avec
+  - ce
+  - ces
+  - cette
+  - dans
+  - de
+  - des
+  - du
+  - elle
+  - en
+  - et
+  - for
+  - la
+  - le
+  - les
+  - new
+  - of
+  - on
+  - pour
+  - que
+  - qui
+  - the
+  - this
+  - une
+  - with
+  # Mots mode trop génériques
+  - mode
+  - tendance
+  - tendances
+  - fashion
+  - style
+  - look
+  - outfit
+  - collection
+  - saison
+  # Mots commerciaux / eBay
+  - offre
+  - offres
+  - achat
+  - vente
+  - prix
+  - livraison
+  - neuf
+  - occasion
+  - marque
+  - soldes
+  - promotion
+  # Mots trop vagues
+  - vintage
+  - classique
+  - basique
+  - essentiel
+  - must
+  - have
+  - bien
+  - très
+  - plus
+  - tout
+  - aussi
+  # Tailles et descriptifs
+  - taille
+  - femme
+  - homme
+  - fille
+  - état
+  - bon
+  - bonne
+  - petit
+  - petite
+  - grand
+  - grande
+  - moyen
+  - moyenne
+  # Matières génériques (satin/denim/cuir sont dans fashion_vocabulary → non bloqués)
+  - coton
+  - laine
+  - tissu
+  - matière
+  # Tailles lettres
+  - xs
+  - xl
+  - xxl
+  # Verbes et expressions temporelles
+  - porter
+  - comment
+  - devient
+  - confirme
+  - revient
+  - signe
+  - domine
+  - impose
+  - reste
+  - retour
+  - grand
+  - grande
+  - incontournable
+  - alternative
+  - elegante
+  - court
+  - structurent
+  - saison
+  # Références temporelles
+  - été
+  - hiver
+  - automne
+  - printemps
+  - cet
+  - cette
+  - l'été
+  - l'automne
+  - mi-saison
+  # Mots trop génériques mode (robe/pantalon sont dans fashion_vocabulary → non bloqués)
+  - chaussure
+  - chaussures
+  - robes
+  - pièces
+  - pièce
+  - looks
+  - silhouettes
+  - silhouette
+  # Divers parasites
+  - street
+  - paris
+  - parisien
+  - parisienne
+  - inspiration
+  - inspo
+  - editorial
+  - chic
+  - 2026
+  - printemps
+  - discussion
+  - styling
+  - ideas
+  # Mots de 1-3 lettres — déjà rejetés par len<4 dans useful_keyword()
+

@@ -1,0 +1,15 @@
+.env
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+data_lake/
+exports/
+logs/
+airflow_home/
+__MACOSX/
+*.zip
+.DS_Store
+
