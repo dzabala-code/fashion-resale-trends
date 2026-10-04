@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
@@ -26,14 +26,14 @@ def python_module(module: str) -> str:
 
 
 def spark_submit(script: str) -> str:
-    """Run a PySpark job via spark-submit."""
+    """Run a PySpark job via spark-submit, passing the DAG run's logical date."""
     submit_bin = (
         "$(python3 -c \"import pyspark,os; "
         "print(os.path.join(pyspark.__path__[0],'bin','spark-submit'))\")"
     )
     return (
         f"cd {PROJECT_ROOT} && "
-        f"{submit_bin} "
+        f"RUN_DATE={{{{ ds }}}} {submit_bin} "
         f"--master ${{SPARK_MASTER:-local[2]}} "
         f"src/fashion_resale_trends/spark_jobs/{script}"
     )
@@ -41,21 +41,19 @@ def spark_submit(script: str) -> str:
 
 with DAG(
     dag_id="fashion_resale_opportunity_pipeline",
-    description="Detect fashion trends and recommend three eBay resale opportunities per keyword.",
+    description="Ingest fashion trend signals, combine them per keyword and expose the results.",
     start_date=datetime(2026, 1, 1),
     schedule="@daily",
     catchup=False,
+    # Runs share the same data lake folders: two runs at once would overwrite each other.
+    max_active_runs=1,
+    # Scraped sites and APIs drop connections from time to time: retry before failing.
+    default_args={"retries": 2, "retry_delay": timedelta(minutes=5)},
     tags=["big-data", "fashion", "resale", "minio"],
 ) as dag:
-    scrape_vogue = BashOperator(
-        task_id="scrape_vogue",
-        bash_command=python_task("scrape_vogue"),
-        env=ENV,
-    )
-
-    scrape_elle = BashOperator(
-        task_id="scrape_elle",
-        bash_command=python_task("scrape_elle"),
+    scrape_media = BashOperator(
+        task_id="scrape_media",
+        bash_command=python_task("scrape_all_media"),
         env=ENV,
     )
 
@@ -113,9 +111,9 @@ with DAG(
         env=ENV,
     )
 
-    score_offers = BashOperator(
-        task_id="score_ebay_offers",
-        bash_command=python_module("fashion_resale_trends.ml.recommend_offers"),
+    check_quality = BashOperator(
+        task_id="check_data_quality",
+        bash_command=python_module("fashion_resale_trends.quality_checks"),
         env=ENV,
     )
 
@@ -131,8 +129,8 @@ with DAG(
         env=ENV,
     )
 
-    [scrape_vogue, scrape_elle, discover_marketplace_keywords] >> extract_keywords
+    [scrape_media, discover_marketplace_keywords] >> extract_keywords
     extract_keywords >> [ingest_reddit, ingest_streetwear_media, ingest_google_trends, ingest_ebay_offers, ingest_vinted]
     [ingest_reddit, ingest_streetwear_media, ingest_google_trends, ingest_ebay_offers, ingest_vinted] >> format_sources
-    format_sources >> combine_scores >> score_offers >> export_zip >> index_elasticsearch
+    format_sources >> combine_scores >> check_quality >> export_zip >> index_elasticsearch
 

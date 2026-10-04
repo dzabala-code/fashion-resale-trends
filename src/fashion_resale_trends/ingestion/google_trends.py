@@ -11,7 +11,6 @@ import requests
 from fashion_resale_trends import fixtures
 from fashion_resale_trends.config import Settings, sources_config
 from fashion_resale_trends.keywords import normalize_keyword
-from fashion_resale_trends.storage import ObjectStore
 
 _BASE_URL = "https://trends.google.com/trends"
 _USER_AGENT = (
@@ -19,7 +18,7 @@ _USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 _REQUEST_DELAY_SECONDS = 8.0
-_MAX_LIVE_KEYWORDS = 10
+_MAX_LIVE_KEYWORDS = 30
 _BATCH_SIZE = 5
 _MAX_RETRIES = 3
 _SINGLE_KEYWORD_RETRIES = 2
@@ -92,11 +91,11 @@ class _GoogleTrendsClient:
                 }
             ),
         }
+        # Google now answers HTTP 500 to a POST on this endpoint; GET works.
         widgets = self._get_json(
             f"{_BASE_URL}/api/explore",
-            method="POST",
             trim_chars=4,
-            data=payload,
+            params=payload,
         ).get("widgets", [])
         for widget in widgets:
             if widget.get("id") == "TIMESERIES":
@@ -201,32 +200,9 @@ def _fetch_live_records(
     return records
 
 
-def _load_cached_raw_records(keywords: list[str], store: ObjectStore) -> list[dict[str, Any]]:
-    prior = store.read_jsonl("raw", "search", "google_trends")
-    if not prior:
-        return []
-    wanted = {normalize_keyword(keyword) for keyword in keywords}
-    filtered = [
-        row
-        for row in prior
-        if normalize_keyword(str(row.get("keyword", ""))) in wanted and not row.get("source_is_fixture")
-    ]
-    if not filtered:
-        return []
-    collected_at = datetime.now(timezone.utc).isoformat()
-    return [
-        {
-            **row,
-            "collected_at": collected_at,
-            "source": "google_trends",
-            "source_is_fixture": False,
-            "source_is_cached": True,
-        }
-        for row in filtered
-    ]
-
-
 def fetch_google_trends(keywords: Iterable[str], cfg: Settings) -> list[dict[str, Any]]:
+    """Live search interest only. Old cached runs are not reused: scoring today's
+    trends with months-old interest data would be misleading."""
     selected = [normalize_keyword(keyword) for keyword in keywords if normalize_keyword(str(keyword))]
     selected = selected[:_MAX_LIVE_KEYWORDS]
     try:
@@ -234,32 +210,8 @@ def fetch_google_trends(keywords: Iterable[str], cfg: Settings) -> list[dict[str
         records = _fetch_live_records(lambda: _new_client(cfg), selected, timeframe)
         if records:
             return records
-        cached = _load_cached_raw_records(selected, ObjectStore())
-        if cached:
-            print(
-                json.dumps(
-                    {
-                        "event": "google_trends_cached_fallback",
-                        "count": len(cached),
-                        "keywords": sorted({row["keyword"] for row in cached}),
-                    }
-                )
-            )
-            return cached
         raise RuntimeError("Google Trends returned no records.")
     except Exception:
         if not cfg.use_fixtures_if_source_fail:
-            cached = _load_cached_raw_records(selected, ObjectStore())
-            if cached:
-                print(
-                    json.dumps(
-                        {
-                            "event": "google_trends_cached_fallback",
-                            "count": len(cached),
-                            "keywords": sorted({row["keyword"] for row in cached}),
-                        }
-                    )
-                )
-                return cached
             raise
         return fixtures.google_trends(selected)

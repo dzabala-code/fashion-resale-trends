@@ -2,6 +2,7 @@ from __future__ import annotations
 
 
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -16,9 +17,13 @@ if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 
+def _media_datasets() -> list[tuple[str, str, str, str]]:
+    from fashion_resale_trends.config import sources_config
+
+    return [("media", name, "media", name) for name in sources_config().get("media", {})]
+
+
 DATASETS = [
-    ("media", "vogue", "media", "vogue"),
-    ("media", "elle", "media", "elle"),
     ("discovery", "marketplace_keywords", "discovery", "marketplace_keywords"),
     ("discovery", "extracted_keywords", "discovery", "extracted_keywords"),
     ("social", "reddit", "social", "reddit"),
@@ -85,13 +90,16 @@ def format_dataset(spark, raw_group: str, raw_entity: str, fmt_group: str, fmt_e
     
     df = spark.read.option("inferSchema", "true").json(str(run_dir / "*.jsonl"))
 
+    output_dir = DATA_ROOT / "formatted" / fmt_group / fmt_entity / "parquet"
+
     if df.rdd.isEmpty():
-        print(f"[SKIP] Aucun enregistrement dans {run_dir}")
+        # The latest run is empty: drop the previous output so stale data is not reused.
+        shutil.rmtree(output_dir, ignore_errors=True)
+        print(f"[EMPTY] Aucun enregistrement dans {run_dir}, données formatées supprimées")
         return
 
     df = normalize_df(df)
 
-    output_dir = DATA_ROOT / "formatted" / fmt_group / fmt_entity / "parquet"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     df.coalesce(1).write.mode("overwrite").parquet(str(output_dir))
@@ -116,7 +124,7 @@ def main() -> None:
 
     print(f"[Spark] master={spark_master}  data_root={DATA_ROOT}")
 
-    for raw_group, raw_entity, fmt_group, fmt_entity in DATASETS:
+    for raw_group, raw_entity, fmt_group, fmt_entity in _media_datasets() + DATASETS:
         try:
             format_dataset(spark, raw_group, raw_entity, fmt_group, fmt_entity)
         except Exception as exc:

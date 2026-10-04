@@ -141,3 +141,24 @@ stopwords:
   - ideas
   # Mots de 1-3 lettres — déjà rejetés par len<4 dans useful_keyword()
 
+  # Néerlandais (titres d'annonces Marktplaats)
+  - maat
+  - maten
+  - mt
+  - nieuw
+  - nieuwe
+  - zgan
+  - zo
+  - goed
+  - als
+  - staat
+  - heren
+  - dames
+  - kinderen
+  - voor
+  - met
+  - van
+  - een
+  - het
+  - te
+  - koop

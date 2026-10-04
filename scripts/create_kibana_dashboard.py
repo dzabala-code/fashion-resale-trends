@@ -163,7 +163,15 @@ def create_lens_timeseries(obj_id: str, title: str, dv_id: str) -> str:
     return d.get("id", f"ERR: {str(d)[:120]}")
 
 
-def create_lens_bar(obj_id: str, title: str, dv_id: str, x_field: str, y_field: str, series_type: str = "bar_horizontal") -> str:
+def create_lens_bar(
+    obj_id: str,
+    title: str,
+    dv_id: str,
+    x_field: str,
+    y_field: str,
+    series_type: str = "bar_horizontal",
+    operation: str = "max",
+) -> str:
     body = {
         "attributes": {
             "title": title,
@@ -199,7 +207,7 @@ def create_lens_bar(obj_id: str, title: str, dv_id: str, x_field: str, y_field: 
                                     "col_y": {
                                         "label": y_field,
                                         "dataType": "number",
-                                        "operationType": "max",
+                                        "operationType": operation,
                                         "scale": "ratio",
                                         "sourceField": y_field,
                                         "isBucketed": False,
@@ -312,11 +320,16 @@ def create_dashboard(panels: list, references: list) -> str:
     body = {
         "attributes": {
             "title": "Fashion Resale Trends — Tableau de bord",
-            "description": "Top tendances mode France/Europe avec recommandations eBay",
+            "description": "Top tendances mode France/Europe et meilleures offres eBay",
             "panelsJSON": json.dumps(panels),
             "optionsJSON": json.dumps({"useMargins": True, "syncColors": True, "hidePanelTitles": False}),
             "version": 1,
-            "timeRestore": False,
+            # Keyword scores are timestamped: without a saved range, Kibana's default
+            # "last 15 minutes" hides every run indexed earlier.
+            "timeRestore": True,
+            "timeFrom": "now-30d",
+            "timeTo": "now",
+            "refreshInterval": {"pause": True, "value": 0},
             "kibanaSavedObjectMeta": {
                 "searchSourceJSON": json.dumps({"query": {"query": "", "language": "kuery"}, "filter": []})
             },
@@ -346,20 +359,20 @@ def main() -> None:
     id1 = create_lens_bar("lens-trend-scores", "Top Keywords — Trend Score", KW_DV, "keyword", "trend_score")
     print(f"  1. Trend Score:        {id1}")
 
-    id2 = create_lens_bar("lens-google-interest", "Google Trends Interest moyen", KW_DV, "keyword", "google_avg_interest")
-    print(f"  2. Google Interest:    {id2}")
+    id2 = create_lens_bar("lens-reddit-mentions", "Posts Reddit par keyword", KW_DV, "keyword", "reddit_mentions")
+    print(f"  2. Reddit:             {id2}")
 
-    id3 = create_lens_bar("lens-media-score", "Score mentions presse (Vogue/Elle)", KW_DV, "keyword", "media_score")
+    id3 = create_lens_bar("lens-media-score", "Score mentions presse", KW_DV, "keyword", "media_score")
     print(f"  3. Media Score:        {id3}")
 
-    id4 = create_lens_bar("lens-ebay-price", "Prix moyen eBay par keyword", OFFER_DV, "keyword", "price_value")
+    id4 = create_lens_bar("lens-ebay-price", "Prix moyen eBay par keyword", OFFER_DV, "keyword", "price_value", operation="average")
     print(f"  4. Prix eBay:          {id4}")
 
-    id5 = create_lens_bar("lens-conditions", "Offers by condition", OFFER_DV, "condition", "model_score")
+    id5 = create_lens_bar("lens-conditions", "Offers by condition", OFFER_DV, "condition", "price_value")
     print(f"  5. Conditions:         {id5}")
 
-    id6 = create_lens_bar("lens-model-score", "Score ML meilleures offres", OFFER_DV, "keyword", "model_score")
-    print(f"  6. Score ML:           {id6}")
+    id6 = create_lens_bar("lens-google-momentum", "Croissance Google Trends (3 mois vs année précédente)", KW_DV, "keyword", "google_momentum")
+    print(f"  6. Momentum Google:    {id6}")
 
     print("\nAssemblage du dashboard...")
     # 6 graphiques en grille 2×3

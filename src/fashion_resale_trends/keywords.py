@@ -97,14 +97,23 @@ def discover_keywords_from_offers(
     discovery_source: str = "marktplaats_keyword_discovery",
     marketplace: str = "marktplaats",
 ) -> list[dict[str, Any]]:
-    """Extract recurring fashion phrases from marketplace listing titles."""
+    """Extract recurring fashion phrases from marketplace listing titles.
+
+    Phrases containing a word of the search query that found a listing are not
+    counted: a listing found by searching "samba adidas" always contains "samba" and
+    "adidas", so counting them would only measure what we searched for, not what is
+    trending. Only the other terms that appear in the titles are kept.
+    """
     from datetime import datetime, timezone
 
     offer_list = list(offers)
     counter: Counter[str] = Counter()
     for offer in offer_list:
         title = str(offer.get("title", ""))
+        query_words = set(normalize_keyword(str(offer.get("keyword", ""))).split())
         for phrase in candidate_phrases(title):
+            if query_words & set(phrase.split()):
+                continue
             counter[phrase] += 1
     records = []
     is_fixture = bool(offer_list) and all(bool(offer.get("source_is_fixture")) for offer in offer_list)

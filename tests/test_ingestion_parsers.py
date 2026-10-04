@@ -35,30 +35,6 @@ def test_parse_reddit_post_extracts_engagement():
     assert parsed["num_comments"] == 11
 
 
-def test_google_trends_cached_fallback_reuses_prior_raw_records(tmp_path, monkeypatch):
-    from fashion_resale_trends.config import settings
-    from fashion_resale_trends.ingestion.google_trends import _load_cached_raw_records
-    from fashion_resale_trends.storage import ObjectStore
-
-    cfg = settings()
-    monkeypatch.setattr(cfg, "local_data_dir", tmp_path)
-    store = ObjectStore(cfg)
-    run_dir = store.layer_dir("raw", "search", "google_trends") / "20260613T145841Z"
-    run_dir.mkdir(parents=True)
-    (run_dir / "interest.jsonl").write_text(
-        '{"keyword": "adidas", "date": "2026-06-01", "interest": 42, "source": "google_trends", "source_is_fixture": false}\n',
-        encoding="utf-8",
-    )
-
-    cached = _load_cached_raw_records(["adidas"], store)
-
-    assert len(cached) == 1
-    assert cached[0]["keyword"] == "adidas"
-    assert cached[0]["interest"] == 42
-    assert cached[0]["source_is_cached"] is True
-    assert cached[0]["source_is_fixture"] is False
-
-
 def test_summarize_google_trends_calculates_average_peak_and_growth():
     rows = [
         {"date": "2026-01-01", "interest": 10},
@@ -174,3 +150,33 @@ def test_marktplaats_min_bid_uses_starting_price():
     assert parsed["price_value"] == 75.0
     assert parsed["price_type"] == "MIN_BID"
 
+
+
+def test_ingest_vinted_writes_empty_run_when_vinted_is_blocked(monkeypatch):
+    from fashion_resale_trends import pipeline
+
+    written = {}
+
+    def blocked(*args, **kwargs):
+        raise RuntimeError("Vinted API returned no records (last HTTP status: 403).")
+
+    monkeypatch.setattr(pipeline, "fetch_vinted_offers", blocked)
+    monkeypatch.setattr(pipeline, "latest_keywords", lambda limit=50: ["cardigan"])
+    monkeypatch.setattr(pipeline, "write_records", lambda *args: written.update(args=args))
+
+    pipeline.task_ingest_vinted()
+
+    assert written["args"][:3] == ("raw", "marketplace", "vinted")
+    assert list(written["args"][4]) == []
+
+
+def test_streetwear_keyword_without_matching_article_gets_no_articles(monkeypatch):
+    from fashion_resale_trends.config import settings
+    from fashion_resale_trends.ingestion import streetwear_media
+
+    articles = [{"title": "Carhartt debuts a workwear jacket", "description": "", "link": "https://x/1"}]
+    monkeypatch.setattr(streetwear_media, "_fetch_all_feeds", lambda: articles)
+
+    records = streetwear_media.fetch_streetwear_articles(["carhartt", "mocassins"], settings())
+
+    assert [record["keyword"] for record in records] == ["carhartt"]

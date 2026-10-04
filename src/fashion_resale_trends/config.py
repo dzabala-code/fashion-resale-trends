@@ -49,7 +49,7 @@ def settings() -> Settings:
         minio_endpoint_url=os.getenv("MINIO_ENDPOINT_URL", "http://localhost:9000"),
         minio_access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
         minio_secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"),
-        use_fixtures_if_source_fail=bool_env("USE_FIXTURES_IF_SOURCE_FAIL", "true"),
+        use_fixtures_if_source_fail=bool_env("USE_FIXTURES_IF_SOURCE_FAIL"),
         ebay_env=os.getenv("EBAY_ENV", "production"),
         ebay_client_id=os.getenv("EBAY_CLIENT_ID", ""),
         ebay_client_secret=os.getenv("EBAY_CLIENT_SECRET", ""),

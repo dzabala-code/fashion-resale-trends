@@ -1,24 +1,6 @@
 from pathlib import Path
 import zipfile
 
-from fashion_resale_trends import fixtures
-from fashion_resale_trends.ml.recommend_offers import OUTPUT_COLUMNS, recommend
-
-
-def test_random_forest_recommends_max_three_offers_per_keyword():
-    top_keywords = [
-        {"keyword": keyword, "keyword_rank": index + 1, "trend_score": 1.0 - index * 0.05}
-        for index, keyword in enumerate(fixtures.KEYWORDS)
-    ]
-    offers = fixtures.ebay_offers(fixtures.KEYWORDS)
-
-    recommendations = recommend(top_keywords, offers)
-
-    assert recommendations
-    assert list(recommendations[0].keys()) == OUTPUT_COLUMNS
-    assert max(sum(1 for row in recommendations if row["keyword"] == kw) for kw in fixtures.KEYWORDS) <= 3
-    assert len(recommendations) == 30
-
 
 def test_elasticsearch_document_coercion_parses_csv_booleans_and_numbers():
     from fashion_resale_trends.exposition.index_elasticsearch import _clean_document
