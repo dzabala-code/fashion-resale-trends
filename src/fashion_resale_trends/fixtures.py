@@ -70,7 +70,7 @@ MEDIA_FIXTURES = {
         "uniqlo essentiels qualité prix rapport idéal",
         "zara tendances mode sélection collection saison",
     ],
-    "elle": [
+    "stylist": [
         "gorpcore le style outdoor envahit la ville",
         "quiet luxury minimalisme luxueux la tendance durable",
         "jean brut raw denim le retour du jean brut",

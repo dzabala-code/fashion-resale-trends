@@ -1,13 +1,14 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
 import requests
 
 from fashion_resale_trends import fixtures
-from fashion_resale_trends.config import Settings
+from fashion_resale_trends.config import Settings, sources_config
 from fashion_resale_trends.keywords import normalize_keyword
 
 _SEARCH_URL = "https://www.marktplaats.nl/lrp/api/search"
@@ -82,18 +83,37 @@ def parse_listing(keyword: str, listing: Mapping[str, Any], source_is_fixture: b
     }
 
 
+# Marktplaats top-level categories searched: Kleding | Dames, Kleding | Heren and
+# Sieraden, Tassen en Uiterlijk. Without them, "robe" returns stage lights (ROBE brand)
+# and "zara" returns 1943 stamps from the city of Zara.
+_DEFAULT_CATEGORY_IDS = [621, 1776, 1826]
+
+
+def _category_ids() -> list[int]:
+    configured = sources_config().get("marktplaats", {}).get("category_ids")
+    return [int(value) for value in configured] if configured else _DEFAULT_CATEGORY_IDS
+
+
 def _fetch_keyword(keyword: str, limit: int) -> list[dict[str, Any]]:
-    
-    fetch_limit = min(max(limit * 2, limit), 100)
-    response = requests.get(
-        _SEARCH_URL,
-        headers=_HEADERS,
-        params={"query": keyword, "limit": fetch_limit},
-        timeout=30,
-    )
-    response.raise_for_status()
-    listings = response.json().get("listings") or []
-    parsed = [parse_listing(keyword, item) for item in listings]
+    categories = _category_ids()
+    per_category = max(1, math.ceil(limit / len(categories)))
+    parsed: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for category_id in categories:
+        response = requests.get(
+            _SEARCH_URL,
+            headers=_HEADERS,
+            params={"query": keyword, "l1CategoryId": category_id, "limit": min(per_category * 2, 100)},
+            timeout=30,
+        )
+        response.raise_for_status()
+        listings = response.json().get("listings") or []
+        rows = [parse_listing(keyword, item) for item in listings]
+        rows = [row for row in rows if row["item_id"] not in seen]
+        rows.sort(key=lambda row: row.get("price_value") is None)
+        for row in rows[:per_category]:
+            seen.add(row["item_id"])
+            parsed.append(row)
 
     with_price = [row for row in parsed if row.get("price_value") is not None]
     without_price = [row for row in parsed if row.get("price_value") is None]

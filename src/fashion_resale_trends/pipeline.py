@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Callable, Iterable
 
 from fashion_resale_trends.config import settings, sources_config
 from fashion_resale_trends.config import seed_keywords
@@ -26,6 +26,17 @@ def write_records(layer: str, group: str, entity: str, filename: str, records: I
     print(json.dumps({"event": "write_records", "count": count, "uri": ref.uri, "local_path": str(ref.local_path)}))
 
 
+def fetch_optional_source(name: str, fetch: Callable[[], Iterable[dict]]) -> list[dict]:
+    """Run an optional source. Vinted (Cloudflare) and Google Trends (unofficial API)
+    are often blocked: on failure we log it and return no records, so the DAG keeps
+    going and the empty run clears that source's stale formatted data."""
+    try:
+        return list(fetch())
+    except Exception as exc:
+        print(json.dumps({"event": "optional_source_unavailable", "source": name, "error": str(exc)}))
+        return []
+
+
 def latest_keywords(limit: int = 50) -> list[str]:
     store = ObjectStore()
     records = store.read_jsonl("raw", "discovery", "extracted_keywords")
@@ -34,22 +45,7 @@ def latest_keywords(limit: int = 50) -> list[str]:
     return [str(row["keyword"]) for row in records[:limit]]
 
 
-def task_scrape_vogue() -> None:
-    cfg = settings()
-    source = sources_config().get("media", {}).get("vogue", {})
-    records = scrape_media("vogue", source.get("url", "https://www.vogue.fr/mode"), cfg.use_fixtures_if_source_fail)
-    write_records("raw", "media", "vogue", "articles.jsonl", records)
-
-
-def task_scrape_elle() -> None:
-    cfg = settings()
-    source = sources_config().get("media", {}).get("elle", {})
-    records = scrape_media("elle", source.get("url", "https://www.elle.fr/Mode"), cfg.use_fixtures_if_source_fail)
-    write_records("raw", "media", "elle", "articles.jsonl", records)
-
-
 def task_scrape_all_media() -> None:
-    
     cfg = settings()
     media_cfg = sources_config().get("media", {})
     for source_name, source_info in media_cfg.items():
@@ -67,20 +63,24 @@ def task_scrape_all_media() -> None:
 
 
 def task_discover_marketplace_keywords() -> None:
-    """Discover fashion keywords from live marketplace listings (Marktplaats in sandbox)."""
+    """Discover fashion keywords from live marketplace listings (Marktplaats in sandbox).
+
+    Searches with the keywords extracted by the previous run, and only falls back to
+    the seed keywords on the first run, when the data lake is still empty.
+    """
     cfg = settings()
-    seeds = seed_keywords()[:20]
+    search_keywords = latest_keywords(20)
     if cfg.ebay_env != "sandbox":
         from fashion_resale_trends.keywords import discover_keywords_from_offers
 
-        offers = list(fetch_offers(seeds, cfg, limit_per_keyword=20))
+        offers = list(fetch_offers(search_keywords, cfg, limit_per_keyword=20))
         records = discover_keywords_from_offers(
             offers,
             discovery_source="ebay_keyword_discovery",
             marketplace="ebay",
         )
     else:
-        records = discover_marktplaats_keywords(cfg, seeds, limit_per_keyword=20)
+        records = discover_marktplaats_keywords(cfg, search_keywords, limit_per_keyword=20)
     write_records("raw", "discovery", "marketplace_keywords", "keywords.jsonl", records)
 
 
@@ -90,8 +90,6 @@ def task_extract_keywords() -> None:
     media_records: list[dict] = []
     for source_name in media_cfg:
         media_records.extend(store.read_jsonl("raw", "media", source_name))
-    if not media_records:
-        media_records = store.read_jsonl("raw", "media", "vogue") + store.read_jsonl("raw", "media", "elle")
     marketplace_keyword_records = store.read_jsonl("raw", "discovery", "marketplace_keywords")
     if not marketplace_keyword_records:
         marketplace_keyword_records = store.read_jsonl("raw", "discovery", "ebay_keywords")
@@ -115,7 +113,7 @@ def task_ingest_streetwear_media() -> None:
 
 
 def task_ingest_google_trends() -> None:
-    records = list(fetch_google_trends(latest_keywords(50), settings()))
+    records = fetch_optional_source("google_trends", lambda: fetch_google_trends(latest_keywords(50), settings()))
     write_records("raw", "search", "google_trends", "interest.jsonl", records)
 
 
@@ -138,8 +136,9 @@ def task_ingest_ebay_offers() -> None:
 
 
 def task_ingest_vinted() -> None:
-    
-    records = list(fetch_vinted_offers(latest_keywords(50), settings(), limit_per_keyword=50))
+    records = fetch_optional_source(
+        "vinted", lambda: fetch_vinted_offers(latest_keywords(50), settings(), limit_per_keyword=50)
+    )
     write_records("raw", "marketplace", "vinted", "offers.jsonl", records)
 
 
@@ -155,8 +154,6 @@ def run_all() -> None:
 
 
 TASKS = {
-    "scrape_vogue": task_scrape_vogue,
-    "scrape_elle": task_scrape_elle,
     "scrape_all_media": task_scrape_all_media,
     "discover_marketplace_keywords": task_discover_marketplace_keywords,
     "extract_keywords": task_extract_keywords,

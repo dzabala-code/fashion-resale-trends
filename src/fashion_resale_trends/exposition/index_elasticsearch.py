@@ -24,13 +24,17 @@ _INT_FIELDS = {
 }
 _FLOAT_FIELDS = {
     "trend_score",
+    "trend_score_delta",
+    "google_momentum",
+    "google_momentum_score",
+    "streetwear_engagement",
+    "media_mentions_score",
     "price_value",
-    "model_score",
     "seller_feedback_percentage",
     "google_avg_interest",
     "reddit_engagement",
     "google_trends_score",
-    "reddit_engagement_score",
+    "reddit_score",
     "media_score",
     "ebay_market_score",
     "vinted_market_score",
@@ -107,10 +111,14 @@ def main() -> None:
     client = Elasticsearch(cfg.elasticsearch_url)
 
     top_keywords_csv = first_csv(store.layer_dir("combined", "keyword_trend_scores", "top10"))
-    offers_csv = store.layer_dir("ml", "ebay_offer_recommendations", "top3") / "top3_ebay_offers.csv"
+    offers_csv = first_csv(store.layer_dir("combined", "ebay_offers", "top3"))
     keyword_rows = _prepare_keyword_rows(read_csv_dicts(top_keywords_csv))
     offer_rows = _prepare_offer_rows(read_csv_dicts(offers_csv))
 
+    # The indices hold the latest run only: clear them first, otherwise keywords that
+    # left the top 10 would stay in Kibana with their old scores.
+    for index in (cfg.keyword_index, cfg.offer_index):
+        client.options(ignore_status=404).indices.delete(index=index)
     helpers.bulk(client, actions_from_rows(cfg.keyword_index, keyword_rows, "keyword"))
     helpers.bulk(client, actions_from_rows(cfg.offer_index, offer_rows, "item_id"))
     print(f"Indexed {len(keyword_rows)} keyword rows into {cfg.keyword_index}")

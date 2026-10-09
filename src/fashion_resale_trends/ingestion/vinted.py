@@ -122,17 +122,19 @@ def fetch_vinted_offers(
     try:
         session = _make_session()
         records: list[dict[str, Any]] = []
+        last_status: int | None = None
         for i, keyword in enumerate(selected):
             try:
                 records.extend(_fetch_keyword(session, keyword, limit_per_keyword))
-            except requests.HTTPError:
+            except requests.HTTPError as exc:
                 # Skip a throttled keyword but keep offers collected so far.
+                last_status = exc.response.status_code if exc.response is not None else None
                 continue
             if i < len(selected) - 1:
                 time.sleep(_REQUEST_DELAY_SECONDS)
         if records:
             return records
-        raise RuntimeError("Vinted API returned no records.")
+        raise RuntimeError(f"Vinted API returned no records (last HTTP status: {last_status}).")
     except Exception:
         if not cfg.use_fixtures_if_source_fail:
             raise

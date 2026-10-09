@@ -129,8 +129,6 @@ def fetch_streetwear_articles(
                     art for art in articles
                     if any(w in art.get("title", "").lower() for w in words)
                 ]
-            if not matched:
-                matched = articles
             for art in matched[:limit_per_query]:
                 records.append(parse_article(keyword, art))
         return records

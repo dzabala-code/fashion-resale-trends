@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fashion_resale_trends.config import settings
+from fashion_resale_trends.quality_checks import run_checks
 from fashion_resale_trends.storage import ObjectStore
 from fashion_resale_trends.tabular_io import count_csv_rows
 
@@ -25,9 +26,7 @@ def create_export_zip() -> Path:
     export_dir.mkdir(parents=True, exist_ok=True)
 
     top_keywords_src = first_csv(store.layer_dir("combined", "keyword_trend_scores", "top10"))
-    offers_src = store.layer_dir("ml", "ebay_offer_recommendations", "top3") / "top3_ebay_offers.csv"
-    if not offers_src.exists():
-        raise FileNotFoundError(f"Missing recommendations file: {offers_src}")
+    offers_src = first_csv(store.layer_dir("combined", "ebay_offers", "top3"))
 
     top_keywords_out = export_dir / "top_keywords.csv"
     shutil.copy2(top_keywords_src, top_keywords_out)
@@ -41,6 +40,7 @@ def create_export_zip() -> Path:
         "offer_count": count_csv_rows(offers_out),
         "bucket": cfg.minio_bucket,
         "market": "France/Europe",
+        "datasets": run_checks(store)["datasets"],
     }
     metadata_path = export_dir / "run_metadata.json"
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")

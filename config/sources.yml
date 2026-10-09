@@ -11,7 +11,7 @@ media:
     url: https://www.vogue.fr/mode/shopping
 
     locale: fr_FR
-  elle:
+  stylist:
     url: https://www.stylist.fr/mode
 
     locale: fr_FR
@@ -64,6 +64,10 @@ reddit:
 ebay:
   marketplace_id: EBAY_FR
   environment: production
+marktplaats:
+  # Fashion categories only: 621 Kleding | Dames, 1776 Kleding | Heren,
+  # 1826 Sieraden, Tassen en Uiterlijk.
+  category_ids: [621, 1776, 1826]
 google_trends:
   geo: FR
   timeframe: today 5-y
